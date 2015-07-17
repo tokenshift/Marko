@@ -48,6 +48,7 @@ func main() {
 	}
 
 	punctuation := regexp.MustCompile("^\\W+")
+	sentenceEnd := regexp.MustCompile("[!\\.\\?]")
 	capitalize := true
 	for token := range(box.Read()) {
 		if !punctuation.MatchString(token) {
@@ -61,7 +62,7 @@ func main() {
 			fmt.Print(strings.ToLower(token))
 		}
 
-		if token == "." {
+		if sentenceEnd.MatchString(token) {
 			capitalize = true
 		}
 	}
