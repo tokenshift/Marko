@@ -1,14 +1,15 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 )
+
+var rxPunctuation = regexp.MustCompile("\\W+$")
+var rxAllUpper = regexp.MustCompile("^[A-Z]+$")
 
 func main() {
 	var order int
@@ -38,69 +39,36 @@ func main() {
 
 	box := NewMarkoBox()
 
-	//history := make([]string, order, 0)
 	previous := ""
-	for token := range(inputTokens(os.Stdin)) {
+	for token := range(Tokenize(os.Stdin)) {
 		if previous != "" {
 			box.Add(previous, token)
 		}
 		previous = token
 	}
 
-	punctuation := regexp.MustCompile("^\\W+")
-	sentenceEnd := regexp.MustCompile("[!\\.\\?]")
 	capitalize := true
-	for token := range(box.Read()) {
-		if !punctuation.MatchString(token) {
+	space := false
+	for word := range box.Read() {
+		if rxAllUpper.MatchString(word) {
+			continue;
+		}
+
+		if space && !rxPunctuation.MatchString(word) {
 			fmt.Print(" ")
 		}
 
 		if capitalize {
-			fmt.Print(strings.ToUpper(token[0:1]), token[1:])
-			capitalize = false
+			fmt.Print(strings.ToUpper(word[0:1]), word[1:])
 		} else {
-			fmt.Print(strings.ToLower(token))
+			fmt.Print(word)
 		}
 
-		if sentenceEnd.MatchString(token) {
-			capitalize = true
-		}
+		capitalize = word == "." || word == "!" || word == "?" || word == "\n\t"
+		space = word != "--" && word != "\n\t"
 	}
 }
 
 func showHelp() {
 	fmt.Fprintln(os.Stderr, "Usage: marko [N] < input.txt")
-}
-
-// Breaks an input stream into whitespace-delimited tokens. Any non-word
-// characters at the end of a token, which are probably punctuation, is treated
-// as its own "word", so that punctuation can also be Markov chained.
-func inputTokens(in io.Reader) (<-chan string) {
-	scanner := bufio.NewScanner(in)
-	scanner.Split(bufio.ScanWords)
-
-	splitWord := regexp.MustCompile("^(\\w+)(\\W*)$")
-
-	out := make(chan string, 1024)
-	go func() {
-		for scanner.Scan() {
-			token := scanner.Text()
-			split := splitWord.FindStringSubmatch(token)
-
-			if split == nil {
-				continue;
-			}
-
-			out <- split[1]
-			if split[2] != "" {
-				out <- split[2]
-			}
-		}
-		if scanner.Err() != nil {
-			fmt.Fprintln(os.Stderr, scanner.Err())
-			os.Exit(1)
-		}
-		close(out)
-	}()
-	return out
 }
