@@ -8,8 +8,10 @@ import (
 	"strings"
 )
 
-var rxPunctuation = regexp.MustCompile("\\W+$")
-var rxAllUpper = regexp.MustCompile("^[A-Z]+$")
+var rxIgnoreToken = regexp.MustCompile("^[A-Z]{2,}$|[\\[\\]\\*/\\+]")
+var rxPunctuation = regexp.MustCompile("^\\W+")
+var rxCapitalizeNext = regexp.MustCompile("([\\.!\\?]|\\n\\s*\\n\\s*)$")
+var rxNoSpaceNext = regexp.MustCompile("(\\-\\-|\\n\\s*\\n\\s*)$")
 
 func main() {
 	var order int
@@ -41,6 +43,10 @@ func main() {
 
 	previous := ""
 	for token := range(Tokenize(os.Stdin)) {
+		if rxIgnoreToken.MatchString(token) {
+			continue
+		}
+
 		if previous != "" {
 			box.Add(previous, token)
 		}
@@ -48,13 +54,9 @@ func main() {
 	}
 
 	capitalize := true
-	space := false
+	noSpace := true
 	for word := range box.Read() {
-		if rxAllUpper.MatchString(word) {
-			continue;
-		}
-
-		if space && !rxPunctuation.MatchString(word) {
+		if !noSpace && !rxPunctuation.MatchString(word) {
 			fmt.Print(" ")
 		}
 
@@ -64,8 +66,8 @@ func main() {
 			fmt.Print(word)
 		}
 
-		capitalize = word == "." || word == "!" || word == "?" || word == "\n\t"
-		space = word != "--" && word != "\n\t"
+		capitalize = rxCapitalizeNext.MatchString(word)
+		noSpace = rxNoSpaceNext.MatchString(word)
 	}
 }
 
