@@ -8,8 +8,6 @@ import (
 	"regexp"
 )
 
-var rxParagraph = regexp.MustCompile("^\\s*\\n\\s*\\n\\s*$")
-
 func Tokenize(in io.Reader) (<-chan string) {
 	out := make(chan string, 64)
 
@@ -18,12 +16,7 @@ func Tokenize(in io.Reader) (<-chan string) {
 
 	go func() {
 		for scanner.Scan() {
-			// Normalize paragraphs.
-			if rxParagraph.MatchString(scanner.Text()) {
-				out <- "\n\n"
-			} else {
-				out <- scanner.Text()
-			}
+			out <- scanner.Text()
 		}
 
 		if scanner.Err() != nil {
@@ -37,8 +30,8 @@ func Tokenize(in io.Reader) (<-chan string) {
 	return out
 }
 
-// Splits the input into a paragraph marker (blank line), word, or punctuation.
-var rxToken = regexp.MustCompile("(\\s*\\n\\s*\\n\\s*)|([0-9a-zA-Z\\-%'\\.]+)|([\\.!\\?\\-]+)")
+// Tokenize a word (including punctuation) or a paragraph marker (blank line).
+var rxToken = regexp.MustCompile("([#0-9a-zA-Z\\-/!\\.\\?:;,']+)|(\\s*\\n\\s*\\n\\s*)")
 
 func splitTokens(data []byte, atEOF bool) (int, []byte, error) {
 	// Handle EOF.
@@ -46,9 +39,15 @@ func splitTokens(data []byte, atEOF bool) (int, []byte, error) {
 		return 0, nil, io.EOF
 	}
 
-	// Look for a token.
-	if ix := rxToken.FindIndex(data); ix != nil {
-		return ix[1], data[ix[0]:ix[1]], nil
+	// Check for words or paragraph markers, ignore everything else.
+	if ix := rxToken.FindSubmatchIndex(data); ix != nil {
+		if ix[2] >= 0 {
+			// Word
+			return ix[3], data[ix[2]:ix[3]], nil
+		} else {
+			// Paragraph (normalized to a single blank line).
+			return ix[5], []byte("\n\n"), nil
+		}
 	}
 
 	// Otherwise, ignore all of this input and move on.

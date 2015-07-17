@@ -8,11 +8,6 @@ import (
 	"strings"
 )
 
-var rxIgnoreToken = regexp.MustCompile("^[A-Z]{2,}$|[\\[\\]\\*/\\+]")
-var rxPunctuation = regexp.MustCompile("^\\W+")
-var rxCapitalizeNext = regexp.MustCompile("([\\.!\\?]|\\n\\s*\\n\\s*)$")
-var rxNoSpaceNext = regexp.MustCompile("(\\-\\-|\\n\\s*\\n\\s*)$")
-
 func main() {
 	var order int
 	switch len(os.Args) {
@@ -43,10 +38,6 @@ func main() {
 
 	previous := ""
 	for token := range(Tokenize(os.Stdin)) {
-		if rxIgnoreToken.MatchString(token) {
-			continue
-		}
-
 		if previous != "" {
 			box.Add(previous, token)
 		}
@@ -55,6 +46,11 @@ func main() {
 
 	capitalize := true
 	noSpace := true
+
+	rxPunctuation    := regexp.MustCompile("^\\W+")
+	rxCapitalizeNext := regexp.MustCompile("([\\.!\\?]|\\n\\s*\\n\\s*)$")
+	rxNoSpaceNext    := regexp.MustCompile("(\\-|\\n\\s*\\n\\s*)$")
+
 	for word := range box.Read() {
 		if !noSpace && !rxPunctuation.MatchString(word) {
 			fmt.Print(" ")
