@@ -34,14 +34,18 @@ func main() {
 
 	fmt.Fprintln(os.Stderr, "Computing Markov chain(s) of order up to", order)
 
-	box := NewMarkoBox()
+	box := NewMarkoBox(order)
 
-	previous := ""
+	precursors := make([]string, 0, order)
 	for token := range(Tokenize(os.Stdin)) {
-		if previous != "" {
-			box.Add(previous, token)
+		if len(precursors) >= 1 {
+			box.Add(precursors, token)
 		}
-		previous = token
+		if len(precursors) >= order {
+			precursors = append(precursors[1:], token)
+		} else {
+			precursors = append(precursors, token)
+		}
 	}
 
 	capitalize := true
