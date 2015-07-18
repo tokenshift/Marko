@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"strings"
 )
@@ -69,7 +70,6 @@ func (node *MarkoNode) Add(successor string) {
 
 // Return a completely random word from the dictionary.
 func (box *MarkoBox) Random() string {
-	fmt.Print("HERE")
 	r := rand.Intn(len(box.dictionary))
 	i := 0
 	for s, _ := range(box.dictionary) {
@@ -85,6 +85,9 @@ func (box *MarkoBox) Random() string {
 
 // Return a statistically likely successor to the specified string.
 func (box *MarkoBox) Next(precursors []string) string {
+	// Select potential successors; one from each level of order.
+	successors := make([]string, 0, len(precursors))
+
 	for i := 0; i < len(precursors); i += 1 {
 		precursor := strings.Join(precursors[i:], " ")
 
@@ -93,13 +96,23 @@ func (box *MarkoBox) Next(precursors []string) string {
 			for s, count := range(node.edges) {
 				r -= count
 				if r <= 0 {
-					return s
+					successors = append(successors, s)
+					break
 				}
 			}
 		}
 	}
 
-	return box.Random()
+	if len(successors) > 0 {
+		// Pick a random successor, weighted towards the higher-order
+		// successors, but not ruling out lower-order successors. A log_2
+		// random distribution is used for this.
+		i := rand.Intn(int(math.Pow(2, float64(len(successors)))) - 1) + 1
+		i = int(math.Floor(math.Log2(float64(i))))
+		return successors[i]
+	} else {
+		return box.Random()
+	}
 }
 
 // A continuous stream of semi-literate gibberish. Attempts to "seed" or
